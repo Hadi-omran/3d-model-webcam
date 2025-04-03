@@ -3,32 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AR.js Fixed Model on Surface</title>
+    <title>AR.js Surface Detection</title>
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ar.js@latest/aframe/build/aframe-ar.min.js"></script>
 </head>
 <body style="margin: 0; overflow: hidden;">
 
     <!-- AR Scene -->
-    <a-scene embedded arjs="sourceType: webcam; trackingMethod: best;">
+    <a-scene embedded arjs="sourceType: webcam; trackingMethod: best; debugUIEnabled: false;">
         
-        <!-- Surface Detection (Invisible) -->
-        <a-marker id="marker" type="pattern" url="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/patt.hiro">
-            <!-- Astronaut Model (Fixed in Place) -->
-            <a-entity 
-                id="astronaut" 
-                gltf-model="https://modelviewer.dev/shared-assets/models/Astronaut.glb"
-                scale="0.5 0.5 0.5"
-                position="0 0 0"
-                rotation="0 180 0"
-                animation-mixer>
-            </a-entity>
-        </a-marker>
+        <!-- Invisible Plane for Surface Detection -->
+        <a-entity id="surface" geometry="primitive: plane; width: 10; height: 10;" 
+                  material="opacity: 0; transparent: true;"></a-entity>
+
+        <!-- Fixed Astronaut Model -->
+        <a-entity id="astronaut"
+            gltf-model="https://modelviewer.dev/shared-assets/models/Astronaut.glb"
+            scale="0.5 0.5 0.5"
+            position="0 0 0"
+            rotation="0 180 0"
+            visible="false"
+            animation-mixer>
+        </a-entity>
 
         <!-- Camera -->
         <a-camera position="0 1.6 0"></a-camera>
 
     </a-scene>
+
+    <script>
+        const model = document.getElementById("astronaut");
+        const surface = document.getElementById("surface");
+
+        // Listen for surface detection
+        document.querySelector("a-scene").addEventListener("arjs-ready", function () {
+            surface.addEventListener("surface-detected", function () {
+                model.setAttribute("visible", "true"); // Show model when surface is found
+            });
+
+            surface.addEventListener("surface-lost", function () {
+                model.setAttribute("visible", "false"); // Hide if surface is lost
+            });
+        });
+    </script>
 
 </body>
 </html>
