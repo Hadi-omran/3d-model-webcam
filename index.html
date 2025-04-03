@@ -3,83 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AR.js Plane Detection</title>
+    <title>AR.js Fixed 3D Model</title>
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/ar.js@3.3.2/aframe/build/aframe-ar.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ar.js@latest/aframe/build/aframe-ar.min.js"></script>
 </head>
 <body style="margin: 0; overflow: hidden;">
 
     <!-- AR Scene -->
     <a-scene 
         embedded 
-        arjs="sourceType: webcam; debugUIEnabled: false; trackingMethod: best;" 
-        vr-mode-ui="enabled: false"
-        renderer="precision: medium;">
+        arjs="sourceType: webcam; debugUIEnabled: false; trackingMethod: best; detectionMode: mono_and_matrix; matrixCodeType: 4x4;">
         
-        <!-- Placeholder for the detected surface -->
-        <a-entity id="surface-anchor" position="0 0 0">
-            <a-entity 
-                id="model"
-                gltf-model="https://modelviewer.dev/shared-assets/models/RobotExpressive.glb"
-                scale="0.5 0.5 0.5"
-                position="0 0 0"
-                rotation="0 180 0"
-                visible="false"
-                animation-mixer>
-            </a-entity>
+        <!-- Invisible Plane for Surface Detection -->
+        <a-entity id="ground" geometry="primitive: plane; width: 10; height: 10;" 
+                  material="opacity: 0; transparent: true"></a-entity>
+
+        <!-- Fixed 3D Model -->
+        <a-entity 
+            gltf-model="https://modelviewer.dev/shared-assets/models/RobotExpressive.glb"
+            scale="0.5 0.5 0.5"
+            position="0 0 0"
+            rotation="0 180 0"
+            animation-mixer>
         </a-entity>
 
         <!-- Camera -->
         <a-camera position="0 1.6 0"></a-camera>
 
     </a-scene>
-
-    <script>
-        AFRAME.registerComponent('hit-test', {
-            init: function () {
-                const sceneEl = document.querySelector('a-scene');
-                const modelEl = document.getElementById('model');
-                const anchorEl = document.getElementById("surface-anchor");
-                let hitTestSource = null;
-                let hitTestSourceRequested = false;
-
-                sceneEl.addEventListener('enter-vr', () => {
-                    const session = sceneEl.renderer.xr.getSession();
-                    if (!session) return;
-
-                    session.addEventListener('select', () => {
-                        if (this.hitTestPose) {
-                            anchorEl.setAttribute("position", 
-                                `${this.hitTestPose.transform.position.x} 
-                                 ${this.hitTestPose.transform.position.y} 
-                                 ${this.hitTestPose.transform.position.z}`);
-                            modelEl.setAttribute("visible", "true");
-                        }
-                    });
-
-                    if (!hitTestSourceRequested) {
-                        session.requestReferenceSpace('viewer').then(referenceSpace => {
-                            session.requestHitTestSource({ space: referenceSpace }).then(source => {
-                                hitTestSource = source;
-                            });
-                        });
-
-                        hitTestSourceRequested = true;
-                    }
-                });
-
-                sceneEl.renderer.xr.addEventListener('sessionstart', () => {
-                    console.log("XR session started");
-                });
-
-                sceneEl.renderer.xr.addEventListener('sessionend', () => {
-                    console.log("XR session ended");
-                });
-            }
-        });
-
-        document.querySelector('a-scene').setAttribute('hit-test', '');
-    </script>
 
 </body>
 </html>
