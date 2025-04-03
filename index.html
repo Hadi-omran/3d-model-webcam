@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AR.js 3D Model on Surface</title>
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/ar.js@latest/aframe/build/aframe-ar.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ar.js@3.3.2/aframe/build/aframe-ar.min.js"></script>
 </head>
 <body style="margin: 0; overflow: hidden;">
 
@@ -13,26 +13,65 @@
     <a-scene 
         embedded 
         arjs="sourceType: webcam; debugUIEnabled: false; trackingMethod: best;" 
-        vr-mode-ui="enabled: false">
-
-        <!-- AR Anchor for Plane Detection -->
-        <a-anchor hit-testing="enabled: true">
-
-            <!-- 3D Model -->
+        vr-mode-ui="enabled: false"
+        renderer="precision: medium;">
+        
+        <!-- Surface Detection: Place Model When Found -->
+        <a-entity id="surface-anchor" position="0 0 0">
             <a-entity 
                 gltf-model="https://modelviewer.dev/shared-assets/models/RobotExpressive.glb"
                 scale="0.5 0.5 0.5"
                 position="0 0 0"
                 rotation="0 180 0"
+                visible="false"
                 animation-mixer>
             </a-entity>
-
-        </a-anchor>
+        </a-entity>
 
         <!-- Camera -->
         <a-camera position="0 1.6 0"></a-camera>
 
     </a-scene>
+
+    <script>
+        AFRAME.registerComponent('hit-test', {
+            init: function () {
+                const sceneEl = document.querySelector('a-scene');
+                const modelEl = document.querySelector('[gltf-model]');
+                let hitTestSource = null;
+                let hitTestSourceRequested = false;
+
+                sceneEl.addEventListener('enter-vr', () => {
+                    const session = sceneEl.renderer.xr.getSession();
+
+                    if (!session) return;
+
+                    session.addEventListener('select', () => {
+                        if (hitTestSource) {
+                            const anchor = document.getElementById("surface-anchor");
+                            anchor.setAttribute("position", 
+                                `${this.hitTestPose.transform.position.x} 
+                                 ${this.hitTestPose.transform.position.y} 
+                                 ${this.hitTestPose.transform.position.z}`);
+                            modelEl.setAttribute("visible", "true");
+                        }
+                    });
+
+                    if (!hitTestSourceRequested) {
+                        session.requestReferenceSpace('viewer').then(referenceSpace => {
+                            session.requestHitTestSource({ space: referenceSpace }).then(source => {
+                                hitTestSource = source;
+                            });
+                        });
+
+                        hitTestSourceRequested = true;
+                    }
+                });
+            }
+        });
+
+        document.querySelector('a-scene').setAttribute('hit-test', '');
+    </script>
 
 </body>
 </html>
