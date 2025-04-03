@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AR.js Fixed 3D Model</title>
+    <title>AR.js Surface Detection</title>
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ar.js@latest/aframe/build/aframe-ar.min.js"></script>
 </head>
@@ -12,18 +12,20 @@
     <!-- AR Scene -->
     <a-scene 
         embedded 
-        arjs="sourceType: webcam; debugUIEnabled: false; trackingMethod: best; detectionMode: mono_and_matrix; matrixCodeType: 4x4;">
+        arjs="sourceType: webcam; trackingMethod: best; detectionMode: mono_and_matrix; matrixCodeType: 4x4;">
         
-        <!-- Invisible Plane for Surface Detection -->
-        <a-entity id="ground" geometry="primitive: plane; width: 10; height: 10;" 
-                  material="opacity: 0; transparent: true"></a-entity>
+        <!-- Invisible plane to detect surfaces -->
+        <a-entity id="surface-plane" geometry="primitive: plane; width: 10; height: 10;" 
+                  material="opacity: 0; transparent: true;" position="0 0 0">
+        </a-entity>
 
-        <!-- Fixed 3D Model -->
-        <a-entity 
+        <!-- 3D Model that gets fixed on the surface -->
+        <a-entity id="model"
             gltf-model="https://modelviewer.dev/shared-assets/models/RobotExpressive.glb"
             scale="0.5 0.5 0.5"
             position="0 0 0"
             rotation="0 180 0"
+            visible="false"
             animation-mixer>
         </a-entity>
 
@@ -31,6 +33,29 @@
         <a-camera position="0 1.6 0"></a-camera>
 
     </a-scene>
+
+    <script>
+        const modelEl = document.getElementById('model');
+        const surfacePlane = document.getElementById('surface-plane');
+        let isSurfaceDetected = false;
+
+        // Detect when a flat surface is found and position the model
+        document.querySelector('a-scene').addEventListener('arjs-ready', function () {
+            surfacePlane.addEventListener('surface-detected', function () {
+                if (!isSurfaceDetected) {
+                    // Position the model on the detected surface
+                    modelEl.setAttribute("position", "0 0 0");
+                    modelEl.setAttribute("visible", "true");
+                    isSurfaceDetected = true;
+                }
+            });
+
+            surfacePlane.addEventListener('surface-lost', function () {
+                modelEl.setAttribute("visible", "false");
+                isSurfaceDetected = false;
+            });
+        });
+    </script>
 
 </body>
 </html>
