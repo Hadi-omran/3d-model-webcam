@@ -6,7 +6,7 @@
     <title>3D Model & Camera</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128/examples/js/loaders/GLTFLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128/examples/js/controls/OrbitControls.js"></script> <!-- OrbitControls -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128/examples/js/controls/OrbitControls.js"></script>
     <style>
         body { margin: 0; overflow: hidden; display: flex; justify-content: center; align-items: center; flex-direction: column; }
         video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: -1; }
@@ -21,35 +21,59 @@
     <button id="switchCamera">Switch Camera</button>
 
     <script>
-        let currentFacingMode = "user"; // "user" for front, "environment" for rear
-        let stream = null;
+        let videoElement = document.getElementById('video');
+        let switchButton = document.getElementById('switchCamera');
+        let currentStream = null;
+        let frontCameraId = null;
+        let rearCameraId = null;
+        let usingFrontCamera = true;
 
-        async function startCamera(facingMode) {
-            // Stop any existing stream
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
+        // Get available cameras
+        async function getCameras() {
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+
+                if (videoDevices.length > 1) {
+                    frontCameraId = videoDevices[0].deviceId;
+                    rearCameraId = videoDevices[1].deviceId;
+                } else {
+                    console.warn("Only one camera found.");
+                }
+
+                startCamera(frontCameraId || "user"); // Start with front camera
+            } catch (error) {
+                console.error("Error getting cameras:", error);
+            }
+        }
+
+        // Start camera with specific deviceId
+        async function startCamera(deviceId) {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
             }
 
             try {
-                stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode }
-                });
+                let constraints = {
+                    video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: "user" }
+                };
 
-                const videoElement = document.getElementById('video');
-                videoElement.srcObject = stream;
+                currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+                videoElement.srcObject = currentStream;
             } catch (error) {
                 console.error("Camera Access Error:", error);
             }
         }
 
-        // Initialize camera
-        startCamera(currentFacingMode);
-
-        // Button to switch camera
-        document.getElementById("switchCamera").addEventListener("click", () => {
-            currentFacingMode = (currentFacingMode === "user") ? "environment" : "user";
-            startCamera(currentFacingMode);
+        // Switch camera function
+        switchButton.addEventListener("click", () => {
+            usingFrontCamera = !usingFrontCamera;
+            let newCameraId = usingFrontCamera ? frontCameraId : rearCameraId;
+            startCamera(newCameraId);
         });
+
+        // Initialize cameras
+        getCameras();
 
         // Setup Three.js
         const scene = new THREE.Scene();
