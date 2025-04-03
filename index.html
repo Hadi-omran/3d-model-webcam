@@ -8,24 +8,48 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128/examples/js/controls/OrbitControls.js"></script> <!-- OrbitControls -->
     <style>
-        body { margin: 0; overflow: hidden; }
+        body { margin: 0; overflow: hidden; display: flex; justify-content: center; align-items: center; flex-direction: column; }
         video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: -1; }
         canvas { position: absolute; top: 0; left: 0; }
+        button { position: absolute; top: 20px; left: 20px; z-index: 10; padding: 10px; background: white; border: none; cursor: pointer; }
     </style>
 </head>
 <body>
 
     <!-- Webcam Video -->
     <video id="video" autoplay playsinline></video>
+    <button id="switchCamera">Switch Camera</button>
 
     <script>
-        // Access the camera
-        navigator.mediaDevices.getUserMedia({ video: true })
-            .then(stream => {
-                const video = document.getElementById('video');
-                video.srcObject = stream;
-            })
-            .catch(err => console.error("Camera Access Error:", err));
+        let currentFacingMode = "user"; // "user" for front, "environment" for rear
+        let stream = null;
+
+        async function startCamera(facingMode) {
+            // Stop any existing stream
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode }
+                });
+
+                const videoElement = document.getElementById('video');
+                videoElement.srcObject = stream;
+            } catch (error) {
+                console.error("Camera Access Error:", error);
+            }
+        }
+
+        // Initialize camera
+        startCamera(currentFacingMode);
+
+        // Button to switch camera
+        document.getElementById("switchCamera").addEventListener("click", () => {
+            currentFacingMode = (currentFacingMode === "user") ? "environment" : "user";
+            startCamera(currentFacingMode);
+        });
 
         // Setup Three.js
         const scene = new THREE.Scene();
@@ -45,7 +69,6 @@
                 scene.add(model);
             },
             function(xhr) {
-                // Check if xhr.total > 0 before dividing
                 if (xhr.total > 0) {
                     console.log((xhr.loaded / xhr.total * 100) + '% loaded');
                 } else {
@@ -66,7 +89,7 @@
         // Animation Loop
         function animate() {
             requestAnimationFrame(animate);
-            controls.update();  // Update the controls (necessary for smooth movement)
+            controls.update();
             renderer.render(scene, camera);
         }
         animate();
