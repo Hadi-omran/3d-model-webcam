@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AR.js 3D Model on Surface</title>
+    <title>AR.js Plane Detection</title>
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ar.js@3.3.2/aframe/build/aframe-ar.min.js"></script>
 </head>
@@ -16,9 +16,10 @@
         vr-mode-ui="enabled: false"
         renderer="precision: medium;">
         
-        <!-- Surface Detection: Place Model When Found -->
+        <!-- Placeholder for the detected surface -->
         <a-entity id="surface-anchor" position="0 0 0">
             <a-entity 
+                id="model"
                 gltf-model="https://modelviewer.dev/shared-assets/models/RobotExpressive.glb"
                 scale="0.5 0.5 0.5"
                 position="0 0 0"
@@ -37,19 +38,18 @@
         AFRAME.registerComponent('hit-test', {
             init: function () {
                 const sceneEl = document.querySelector('a-scene');
-                const modelEl = document.querySelector('[gltf-model]');
+                const modelEl = document.getElementById('model');
+                const anchorEl = document.getElementById("surface-anchor");
                 let hitTestSource = null;
                 let hitTestSourceRequested = false;
 
                 sceneEl.addEventListener('enter-vr', () => {
                     const session = sceneEl.renderer.xr.getSession();
-
                     if (!session) return;
 
                     session.addEventListener('select', () => {
-                        if (hitTestSource) {
-                            const anchor = document.getElementById("surface-anchor");
-                            anchor.setAttribute("position", 
+                        if (this.hitTestPose) {
+                            anchorEl.setAttribute("position", 
                                 `${this.hitTestPose.transform.position.x} 
                                  ${this.hitTestPose.transform.position.y} 
                                  ${this.hitTestPose.transform.position.z}`);
@@ -66,6 +66,14 @@
 
                         hitTestSourceRequested = true;
                     }
+                });
+
+                sceneEl.renderer.xr.addEventListener('sessionstart', () => {
+                    console.log("XR session started");
+                });
+
+                sceneEl.renderer.xr.addEventListener('sessionend', () => {
+                    console.log("XR session ended");
                 });
             }
         });
