@@ -1,96 +1,113 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8">
-  <title>AR Astronaut with Three.js</title>
-  <style>
-    body { margin: 0; overflow: hidden; }
-    #ar-container { width: 100%; height: 100vh; }
-  </style>
+    <meta charset="utf-8">
+    <title>AR Astronaut with Three.js</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+        #ar-button {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: 20px;
+            padding: 12px 24px;
+            background: #4285f4;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            z-index: 100;
+        }
+    </style>
 </head>
 <body>
-  <div id="ar-container"></div>
-
-  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/GLTFLoader.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
-  <script src="https://raw.githack.com/AR-js-org/AR.js/master/three.js/build/ar-threex.js"></script>
-  <script src="https://raw.githack.com/AR-js-org/AR.js/master/three.js/build/ar-threex-location-only.js"></script>
-  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-
-  <script>
-    // Initialize Three.js scene
-    const container = document.getElementById('ar-container');
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
-    container.appendChild(renderer.domElement);
-
-    // AR.js setup
-    const arToolkitSource = new THREEx.ArToolkitSource({
-      sourceType: 'webcam',
-    });
-
-    const arToolkitContext = new THREEx.ArToolkitContext({
-      cameraParametersUrl: 'https://raw.githack.com/AR-js-org/AR.js/master/data/data/camera_para.dat',
-      detectionMode: 'mono',
-    });
-
-    // Initialize AR
-    arToolkitSource.init(() => {
-      arToolkitSource.onResize(renderer.domElement);
-      arToolkitContext.init(() => {
-        camera.projectionMatrix.copy(arToolkitContext.getProjectionMatrix());
-      });
-    });
-
-    // Handle window resize
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      arToolkitSource.onResize(renderer.domElement);
-    });
-
-    // Load the astronaut model
-    const loader = new THREE.GLTFLoader();
-    let astronaut;
-
-    loader.load(
-      'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
-      (gltf) => {
-        astronaut = gltf.scene;
-        astronaut.scale.set(0.5, 0.5, 0.5);
-        astronaut.position.y = -0.5;
-        scene.add(astronaut);
-      },
-      undefined,
-      (error) => {
-        console.error('Error loading model:', error);
-      }
-    );
-
-    // Marker setup - this will be your surface
-    const markerRoot = new THREE.Group();
-    scene.add(markerRoot);
-
-    const markerControls = new THREEx.ArMarkerControls(arToolkitContext, markerRoot, {
-      type: 'pattern',
-      patternUrl: 'https://raw.githack.com/AR-js-org/AR.js/master/data/data/hiro.pattern',
-    });
-
-    // Animation loop
-    function animate() {
-      requestAnimationFrame(animate);
-      if (arToolkitSource.ready) {
-        arToolkitContext.update(arToolkitSource.domElement);
-        markerRoot.visible = camera.visible;
-      }
-      renderer.render(scene, camera);
-    }
-    animate();
-  </script>
+    <button id="ar-button">Start AR</button>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/GLTFLoader.js"></script>
+    <!-- Include the WebXR manager and AR button helper -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/webxr/VRButton.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/webxr/ARButton.js"></script>
+    
+    <script>
+        let container, scene, camera, renderer, astronaut;
+        
+        init();
+        animate();
+        
+        function init() {
+            container = document.createElement('div');
+            document.body.appendChild(container);
+            
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.xr.enabled = true;
+            container.appendChild(renderer.domElement);
+            
+            // Add AR button
+            const button = document.getElementById('ar-button');
+            button.addEventListener('click', function() {
+                if (!renderer.xr.isPresenting) {
+                    renderer.xr.setReferenceSpaceType('local-floor');
+                    renderer.xr.enabled = true;
+                    navigator.xr.requestSession('immersive-ar', {
+                        requiredFeatures: ['local-floor', 'hit-test']
+                    }).then(onSessionStarted);
+                }
+            });
+            
+            // Add simple lighting
+            const light = new THREE.AmbientLight(0xffffff, 1);
+            scene.add(light);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(0, 10, 0);
+            scene.add(directionalLight);
+            
+            // Load the astronaut model
+            const loader = new THREE.GLTFLoader();
+            loader.load(
+                'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+                (gltf) => {
+                    astronaut = gltf.scene;
+                    astronaut.scale.set(0.5, 0.5, 0.5);
+                    astronaut.position.y = 0;
+                    scene.add(astronaut);
+                },
+                undefined,
+                (error) => {
+                    console.error('Error loading model:', error);
+                }
+            );
+            
+            window.addEventListener('resize', onWindowResize);
+        }
+        
+        function onSessionStarted(session) {
+            session.addEventListener('end', onSessionEnded);
+            renderer.xr.setSession(session);
+            document.getElementById('ar-button').style.display = 'none';
+        }
+        
+        function onSessionEnded() {
+            document.getElementById('ar-button').style.display = 'block';
+        }
+        
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        function animate() {
+            renderer.setAnimationLoop(render);
+        }
+        
+        function render() {
+            renderer.render(scene, camera);
+        }
+    </script>
 </body>
 </html>
