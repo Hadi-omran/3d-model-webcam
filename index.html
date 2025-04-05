@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>WebXR AR Astronaut</title>
 
-  <!-- ✅ Three.js -->
+  <!-- ✅ Three.js Core -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 
   <!-- ✅ GLTFLoader -->
@@ -33,7 +33,7 @@
     renderer.xr.enabled = true;
     document.body.appendChild(renderer.domElement);
 
-    // ✅ Correct ARButton usage (no 'export' keyword)
+    // ✅ Correct ARButton usage (non-module version)
     document.body.appendChild(ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }));
 
     // XR controller for hit testing
