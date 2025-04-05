@@ -33,8 +33,13 @@
     renderer.xr.enabled = true;
     document.body.appendChild(renderer.domElement);
 
-    // ✅ Correct ARButton usage (non-module version)
-    document.body.appendChild(ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }));
+    // Check if ARButton is loaded correctly
+    if (typeof ARButton === 'undefined') {
+      console.error('ARButton is not defined. Please check the script URL.');
+    } else {
+      // ✅ Correct ARButton usage (non-module version)
+      document.body.appendChild(ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }));
+    }
 
     // XR controller for hit testing
     controller = renderer.xr.getController(0);
