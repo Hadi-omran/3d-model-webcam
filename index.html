@@ -3,14 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>WebXR AR - Fixed Astronaut on Surface</title>
+  <title>WebXR AR Astronaut</title>
 
-  <!-- Three.js Core -->
+  <!-- ✅ Three.js Core -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
-  <!-- Loaders & XR Button -->
+  <!-- ✅ Correct ARButton (non-module) -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/ARButton.js"></script>
+
+  <!-- ✅ GLTF Loader -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/webxr/ARButton.js"></script>
 </head>
 <body style="margin: 0; overflow: hidden;">
 
@@ -21,33 +23,35 @@
   let modelPlaced = false;
 
   async function init() {
-    // Setup scene & camera
+    // Setup scene and camera
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera();
 
-    // Setup renderer with WebXR enabled
+    // Setup renderer with WebXR
     renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.xr.enabled = true;
     document.body.appendChild(renderer.domElement);
 
-    // Add AR Button to start session
+    // ✅ Add AR button with hit-test enabled
     document.body.appendChild(ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }));
 
-    // Controller for hit test
+    // Get controller for hit test
     controller = renderer.xr.getController(0);
     scene.add(controller);
 
-    // Load GLB model
+    // Load astronaut GLB
     const loader = new THREE.GLTFLoader();
     loader.load(
       'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
-      function (gltf) {
+      (gltf) => {
         model = gltf.scene;
         model.scale.set(0.5, 0.5, 0.5);
         model.visible = false;
         scene.add(model);
-      }
+      },
+      undefined,
+      (error) => console.error('GLTF load error:', error)
     );
 
     animate();
@@ -84,7 +88,7 @@
           const hit = hitTestResults[0];
           const pose = hit.getPose(referenceSpace);
 
-          // Place the model on the first valid hit
+          // ✅ Place model at hit location
           model.visible = true;
           model.position.set(
             pose.transform.position.x,
@@ -92,14 +96,14 @@
             pose.transform.position.z
           );
 
-          // Optional: rotate to face camera
+          // Optional: make it face camera
           const viewerPose = frame.getViewerPose(referenceSpace);
           if (viewerPose) {
             const viewerPos = viewerPose.transform.position;
             model.lookAt(viewerPos.x, viewerPos.y, viewerPos.z);
           }
 
-          // ✅ Stop hit testing after placement
+          // ✅ Fix model (one-time placement)
           modelPlaced = true;
           hitTestSource = null;
         }
@@ -111,5 +115,6 @@
 
   init();
 </script>
+
 </body>
 </html>
