@@ -1,113 +1,123 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="utf-8">
-    <title>AR Astronaut with Three.js</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Model & Camera</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128/examples/js/controls/OrbitControls.js"></script>
     <style>
-        body { margin: 0; }
-        canvas { display: block; }
-        #ar-button {
-            position: absolute;
-            left: 50%;
-            transform: translateX(-50%);
-            bottom: 20px;
-            padding: 12px 24px;
-            background: #4285f4;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            z-index: 100;
-        }
+        body { margin: 0; overflow: hidden; display: flex; justify-content: center; align-items: center; flex-direction: column; }
+        video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: -1; }
+        canvas { position: absolute; top: 0; left: 0; }
+        button { position: absolute; top: 20px; left: 20px; z-index: 10; padding: 10px; background: white; border: none; cursor: pointer; }
     </style>
 </head>
 <body>
-    <button id="ar-button">Start AR</button>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/GLTFLoader.js"></script>
-    <!-- Include the WebXR manager and AR button helper -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/webxr/VRButton.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/webxr/ARButton.js"></script>
-    
+
+    <!-- Webcam Video -->
+    <video id="video" autoplay playsinline></video>
+    <button id="switchCamera">Switch Camera</button>
+
     <script>
-        let container, scene, camera, renderer, astronaut;
-        
-        init();
-        animate();
-        
-        function init() {
-            container = document.createElement('div');
-            document.body.appendChild(container);
-            
-            scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-            renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.xr.enabled = true;
-            container.appendChild(renderer.domElement);
-            
-            // Add AR button
-            const button = document.getElementById('ar-button');
-            button.addEventListener('click', function() {
-                if (!renderer.xr.isPresenting) {
-                    renderer.xr.setReferenceSpaceType('local-floor');
-                    renderer.xr.enabled = true;
-                    navigator.xr.requestSession('immersive-ar', {
-                        requiredFeatures: ['local-floor', 'hit-test']
-                    }).then(onSessionStarted);
+        let videoElement = document.getElementById('video');
+        let switchButton = document.getElementById('switchCamera');
+        let currentStream = null;
+        let frontCameraId = null;
+        let rearCameraId = null;
+        let usingFrontCamera = true;
+
+        // Get available cameras
+        async function getCameras() {
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+
+                if (videoDevices.length > 1) {
+                    frontCameraId = videoDevices[0].deviceId;
+                    rearCameraId = videoDevices[1].deviceId;
+                } else {
+                    console.warn("Only one camera found.");
                 }
-            });
-            
-            // Add simple lighting
-            const light = new THREE.AmbientLight(0xffffff, 1);
-            scene.add(light);
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            directionalLight.position.set(0, 10, 0);
-            scene.add(directionalLight);
-            
-            // Load the astronaut model
-            const loader = new THREE.GLTFLoader();
-            loader.load(
-                'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
-                (gltf) => {
-                    astronaut = gltf.scene;
-                    astronaut.scale.set(0.5, 0.5, 0.5);
-                    astronaut.position.y = 0;
-                    scene.add(astronaut);
-                },
-                undefined,
-                (error) => {
-                    console.error('Error loading model:', error);
+
+                startCamera(frontCameraId || "user"); // Start with front camera
+            } catch (error) {
+                console.error("Error getting cameras:", error);
+            }
+        }
+
+        // Start camera with specific deviceId
+        async function startCamera(deviceId) {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+            }
+
+            try {
+                let constraints = {
+                    video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: "user" }
+                };
+
+                currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+                videoElement.srcObject = currentStream;
+            } catch (error) {
+                console.error("Camera Access Error:", error);
+            }
+        }
+
+        // Switch camera function
+        switchButton.addEventListener("click", () => {
+            usingFrontCamera = !usingFrontCamera;
+            let newCameraId = usingFrontCamera ? frontCameraId : rearCameraId;
+            startCamera(newCameraId);
+        });
+
+        // Initialize cameras
+        getCameras();
+
+        // Setup Three.js
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Load 3D Model (Robot Model)
+        const loader = new THREE.GLTFLoader();
+        loader.load(
+            "https://modelviewer.dev/shared-assets/models/RobotExpressive.glb", 
+            function(gltf) {
+                let model = gltf.scene;
+                model.scale.set(1.5, 1.5, 1.5);
+                model.position.set(0, -1, -3);
+                scene.add(model);
+            },
+            function(xhr) {
+                if (xhr.total > 0) {
+                    console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+                } else {
+                    console.log(xhr.loaded + ' bytes loaded');
                 }
-            );
-            
-            window.addEventListener('resize', onWindowResize);
-        }
-        
-        function onSessionStarted(session) {
-            session.addEventListener('end', onSessionEnded);
-            renderer.xr.setSession(session);
-            document.getElementById('ar-button').style.display = 'none';
-        }
-        
-        function onSessionEnded() {
-            document.getElementById('ar-button').style.display = 'block';
-        }
-        
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-        
+            },
+            function(error) {
+                console.error("An error happened:", error);
+            }
+        );
+
+        // Set Camera Position
+        camera.position.z = 3;
+
+        // Add OrbitControls to enable movement of the model
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+        // Animation Loop
         function animate() {
-            renderer.setAnimationLoop(render);
-        }
-        
-        function render() {
+            requestAnimationFrame(animate);
+            controls.update();
             renderer.render(scene, camera);
         }
+        animate();
     </script>
+
 </body>
 </html>
