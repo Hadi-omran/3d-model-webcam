@@ -11,6 +11,7 @@
         body { 
             margin: 0; 
             overflow: hidden; 
+            font-family: Arial, sans-serif;
         }
         #ar-button {
             position: absolute;
@@ -25,6 +26,7 @@
             border-radius: 30px;
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
             z-index: 100;
+            cursor: pointer;
         }
         #instructions {
             position: absolute;
@@ -35,19 +37,31 @@
             color: white;
             background: rgba(0,0,0,0.5);
             padding: 10px;
-            font-family: Arial, sans-serif;
+            z-index: 100;
+            backdrop-filter: blur(5px);
+        }
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 18px;
             z-index: 100;
         }
     </style>
 </head>
 <body>
     <div id="instructions">Point your camera at a flat surface like a table</div>
+    <div id="loading">Loading 3D model...</div>
     <button id="ar-button">Start AR Experience</button>
     
     <script>
-        // ARButton implementation (since CDN link is broken)
-        const ARButton = {
-            createButton: function(renderer, options) {
+        // ========== ARButton Implementation ==========
+        class ARButton {
+            static createButton(renderer, sessionInit = {}) {
+                const button = document.getElementById('ar-button');
+                
                 function showStartAR() {
                     button.style.display = '';
                 }
@@ -61,45 +75,53 @@
                     button.style.cursor = 'auto';
                     button.style.opacity = '0.5';
                     button.onclick = null;
+                    button.textContent = 'AR Not Available';
                 }
                 
                 function onSessionStarted(session) {
                     session.addEventListener('end', onSessionEnded);
                     renderer.xr.setSession(session);
+                    button.textContent = 'Exit AR';
+                    button.onclick = onSessionEnded;
                     hideStartAR();
                 }
                 
                 function onSessionEnded() {
+                    renderer.xr.getSession().end();
                     showStartAR();
+                    button.textContent = 'Start AR Experience';
+                    button.onclick = startAR;
                 }
                 
-                const button = document.getElementById('ar-button');
+                async function startAR() {
+                    try {
+                        const session = await navigator.xr.requestSession('immersive-ar', sessionInit);
+                        onSessionStarted(session);
+                    } catch (err) {
+                        console.error('AR session failed:', err);
+                    }
+                }
                 
                 if ('xr' in navigator) {
                     button.style.display = '';
                     
-                    navigator.xr.isSessionSupported('immersive-ar').then(function(supported) {
-                        if (!supported) {
-                            disableButton();
-                            button.textContent = 'AR not supported';
+                    navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
+                        if (supported) {
+                            button.onclick = startAR;
                         } else {
-                            button.addEventListener('click', function() {
-                                navigator.xr.requestSession('immersive-ar', {
-                                    requiredFeatures: ['local-floor', 'hit-test']
-                                }).then(onSessionStarted);
-                            });
+                            disableButton();
                         }
                     }).catch(disableButton);
                 } else {
                     disableButton();
-                    button.textContent = 'AR not supported';
+                    button.textContent = 'AR Not Supported';
                 }
                 
                 return button;
             }
-        };
+        }
 
-        // Scene setup
+        // ========== Main AR Application ==========
         let scene, camera, renderer;
         let model, reticle;
         let controller;
@@ -110,7 +132,7 @@
         init();
         animate();
 
-        function init() {
+        async function init() {
             // Create Three.js scene
             scene = new THREE.Scene();
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -146,26 +168,28 @@
             scene.add(reticle);
             
             // Load the 3D model (Astronaut)
-            const loader = new THREE.GLTFLoader();
-            loader.load(
-                'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
-                (gltf) => {
-                    model = gltf.scene;
-                    model.scale.set(0.5, 0.5, 0.5);
-                    model.visible = false;
-                    
-                    // Adjust model position to sit properly on surfaces
-                    model.position.y = -0.2; // Sink slightly into the surface
-                    scene.add(model);
-                },
-                undefined,
-                (error) => {
-                    console.error('Error loading model:', error);
-                }
-            );
+            try {
+                const loader = new THREE.GLTFLoader();
+                const gltf = await loader.loadAsync('https://modelviewer.dev/shared-assets/models/Astronaut.glb');
+                
+                model = gltf.scene;
+                model.scale.set(0.5, 0.5, 0.5);
+                model.visible = false;
+                
+                // Adjust model position to sit properly on surfaces
+                model.position.y = -0.2; // Sink slightly into the surface
+                scene.add(model);
+                
+                document.getElementById('loading').style.display = 'none';
+            } catch (error) {
+                console.error('Error loading model:', error);
+                document.getElementById('loading').textContent = 'Failed to load 3D model';
+            }
             
             // Initialize AR button
-            ARButton.createButton(renderer);
+            ARButton.createButton(renderer, {
+                requiredFeatures: ['local-floor', 'hit-test']
+            });
             
             // Setup controller for tap interaction
             controller = renderer.xr.getController(0);
@@ -176,12 +200,16 @@
             window.addEventListener('resize', onWindowResize);
             
             // Initialize hit test source when session starts
-            renderer.xr.addEventListener('sessionstart', (event) => {
-                referenceSpace = renderer.xr.getReferenceSpace();
-                event.session.requestHitTestSource({ space: referenceSpace })
-                    .then((source) => {
-                        hitTestSource = source;
+            renderer.xr.addEventListener('sessionstart', async (event) => {
+                referenceSpace = await renderer.xr.getReferenceSpace();
+                
+                try {
+                    hitTestSource = await event.session.requestHitTestSource({ 
+                        space: referenceSpace 
                     });
+                } catch (err) {
+                    console.error('Hit test failed:', err);
+                }
             });
             
             // Clean up when session ends
