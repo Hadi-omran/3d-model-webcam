@@ -5,14 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>WebXR AR Astronaut</title>
 
-  <!-- ✅ Three.js Core -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- ✅ Three.js -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 
-  <!-- ✅ Correct ARButton (non-module) -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/ARButton.js"></script>
-
-  <!-- ✅ GLTF Loader -->
+  <!-- ✅ GLTFLoader -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+
+  <!-- ✅ ARButton (non-module version) -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/ARButton.js"></script>
 </head>
 <body style="margin: 0; overflow: hidden;">
 
@@ -23,24 +23,24 @@
   let modelPlaced = false;
 
   async function init() {
-    // Setup scene and camera
+    // Scene & Camera
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera();
 
-    // Setup renderer with WebXR
+    // Renderer with XR support
     renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.xr.enabled = true;
     document.body.appendChild(renderer.domElement);
 
-    // ✅ Add AR button with hit-test enabled
+    // ✅ Correct ARButton usage (no 'export' keyword)
     document.body.appendChild(ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }));
 
-    // Get controller for hit test
+    // XR controller for hit testing
     controller = renderer.xr.getController(0);
     scene.add(controller);
 
-    // Load astronaut GLB
+    // Load 3D model
     const loader = new THREE.GLTFLoader();
     loader.load(
       'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
@@ -51,7 +51,7 @@
         scene.add(model);
       },
       undefined,
-      (error) => console.error('GLTF load error:', error)
+      (error) => console.error('Error loading GLB:', error)
     );
 
     animate();
@@ -88,7 +88,7 @@
           const hit = hitTestResults[0];
           const pose = hit.getPose(referenceSpace);
 
-          // ✅ Place model at hit location
+          // Place model at hit location
           model.visible = true;
           model.position.set(
             pose.transform.position.x,
@@ -96,14 +96,6 @@
             pose.transform.position.z
           );
 
-          // Optional: make it face camera
-          const viewerPose = frame.getViewerPose(referenceSpace);
-          if (viewerPose) {
-            const viewerPos = viewerPose.transform.position;
-            model.lookAt(viewerPos.x, viewerPos.y, viewerPos.z);
-          }
-
-          // ✅ Fix model (one-time placement)
           modelPlaced = true;
           hitTestSource = null;
         }
