@@ -4,15 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="mobile-web-app-capable" content="yes">
-    <title>AR Astronaut on Table</title>
+    <title>AR Astronaut</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128/examples/js/loaders/GLTFLoader.js"></script>
     <style>
-        body { 
-            margin: 0; 
-            overflow: hidden; 
-            font-family: Arial, sans-serif;
-        }
+        body { margin: 0; overflow: hidden; }
         #ar-button {
             position: absolute;
             left: 50%;
@@ -21,250 +17,135 @@
             padding: 12px 24px;
             background: #4285f4;
             color: white;
-            font-size: 16px;
             border: none;
-            border-radius: 30px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            border-radius: 4px;
             z-index: 100;
-            cursor: pointer;
         }
-        #instructions {
-            position: absolute;
-            top: 20px;
-            left: 0;
-            right: 0;
-            text-align: center;
-            color: white;
-            background: rgba(0,0,0,0.5);
-            padding: 10px;
-            z-index: 100;
-            backdrop-filter: blur(5px);
-        }
-        #loading {
+        #unsupported-message {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
+            text-align: center;
+            padding: 20px;
+            background: rgba(0,0,0,0.8);
             color: white;
-            font-size: 18px;
-            z-index: 100;
+            border-radius: 10px;
+            max-width: 80%;
         }
     </style>
 </head>
 <body>
-    <div id="instructions">Point your camera at a flat surface like a table</div>
-    <div id="loading">Loading 3D model...</div>
-    <button id="ar-button">Start AR Experience</button>
-    
+    <button id="ar-button">Start AR</button>
+    <div id="unsupported-message" style="display: none;">
+        AR not available on this device. Please try on:
+        <ul style="text-align: left;">
+            <li>iPhone with iOS 13+ (Safari)</li>
+            <li>Android with Chrome 81+</li>
+        </ul>
+        Make sure you're using HTTPS.
+    </div>
+
     <script>
-        // ========== ARButton Implementation ==========
-        class ARButton {
-            static createButton(renderer, sessionInit = {}) {
-                const button = document.getElementById('ar-button');
-                
-                function showStartAR() {
-                    button.style.display = '';
+        // Check for WebXR AR support
+        async function checkXRSupport() {
+            if (!navigator.xr) {
+                showUnsupportedMessage();
+                return false;
+            }
+
+            try {
+                const supported = await navigator.xr.isSessionSupported('immersive-ar');
+                if (!supported) {
+                    showUnsupportedMessage();
                 }
-                
-                function hideStartAR() {
-                    button.style.display = 'none';
-                }
-                
-                function disableButton() {
-                    button.style.display = '';
-                    button.style.cursor = 'auto';
-                    button.style.opacity = '0.5';
-                    button.onclick = null;
-                    button.textContent = 'AR Not Available';
-                }
-                
-                function onSessionStarted(session) {
-                    session.addEventListener('end', onSessionEnded);
-                    renderer.xr.setSession(session);
-                    button.textContent = 'Exit AR';
-                    button.onclick = onSessionEnded;
-                    hideStartAR();
-                }
-                
-                function onSessionEnded() {
-                    renderer.xr.getSession().end();
-                    showStartAR();
-                    button.textContent = 'Start AR Experience';
-                    button.onclick = startAR;
-                }
-                
-                async function startAR() {
-                    try {
-                        const session = await navigator.xr.requestSession('immersive-ar', sessionInit);
-                        onSessionStarted(session);
-                    } catch (err) {
-                        console.error('AR session failed:', err);
-                    }
-                }
-                
-                if ('xr' in navigator) {
-                    button.style.display = '';
-                    
-                    navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
-                        if (supported) {
-                            button.onclick = startAR;
-                        } else {
-                            disableButton();
-                        }
-                    }).catch(disableButton);
-                } else {
-                    disableButton();
-                    button.textContent = 'AR Not Supported';
-                }
-                
-                return button;
+                return supported;
+            } catch (error) {
+                console.error("XR check failed:", error);
+                showUnsupportedMessage();
+                return false;
             }
         }
 
-        // ========== Main AR Application ==========
-        let scene, camera, renderer;
-        let model, reticle;
-        let controller;
-        let modelPlaced = false;
-        let hitTestSource = null;
-        let referenceSpace = null;
+        function showUnsupportedMessage() {
+            document.getElementById('unsupported-message').style.display = 'block';
+            document.getElementById('ar-button').style.display = 'none';
+        }
 
-        init();
-        animate();
+        // Main AR implementation
+        async function initAR() {
+            const supported = await checkXRSupport();
+            if (!supported) return;
 
-        async function init() {
-            // Create Three.js scene
-            scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            
-            // Setup WebGL renderer with AR capabilities
-            renderer = new THREE.WebGLRenderer({ 
-                antialias: true, 
-                alpha: true 
-            });
-            renderer.setPixelRatio(window.devicePixelRatio);
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.xr.enabled = true;
             document.body.appendChild(renderer.domElement);
-            
+
             // Add lighting
-            const ambientLight = new THREE.AmbientLight(0xffffff, 1);
-            scene.add(ambientLight);
+            const light = new THREE.AmbientLight(0xffffff, 1);
+            scene.add(light);
             const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
             directionalLight.position.set(0, 10, 0);
             scene.add(directionalLight);
-            
-            // Create placement reticle (indicator)
-            reticle = new THREE.Mesh(
-                new THREE.RingGeometry(0.15, 0.2, 32).rotateX(-Math.PI / 2),
-                new THREE.MeshBasicMaterial({ 
-                    color: 0xffffff,
-                    transparent: true,
-                    opacity: 0.8
-                })
+
+            // Load model
+            const loader = new THREE.GLTFLoader();
+            let model;
+            loader.load(
+                'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+                (gltf) => {
+                    model = gltf.scene;
+                    model.scale.set(0.5, 0.5, 0.5);
+                    model.visible = false;
+                    scene.add(model);
+                }
             );
-            reticle.matrixAutoUpdate = false;
-            reticle.visible = false;
-            scene.add(reticle);
-            
-            // Load the 3D model (Astronaut)
-            try {
-                const loader = new THREE.GLTFLoader();
-                const gltf = await loader.loadAsync('https://modelviewer.dev/shared-assets/models/Astronaut.glb');
-                
-                model = gltf.scene;
-                model.scale.set(0.5, 0.5, 0.5);
-                model.visible = false;
-                
-                // Adjust model position to sit properly on surfaces
-                model.position.y = -0.2; // Sink slightly into the surface
-                scene.add(model);
-                
-                document.getElementById('loading').style.display = 'none';
-            } catch (error) {
-                console.error('Error loading model:', error);
-                document.getElementById('loading').textContent = 'Failed to load 3D model';
-            }
-            
-            // Initialize AR button
-            ARButton.createButton(renderer, {
-                requiredFeatures: ['local-floor', 'hit-test']
-            });
-            
-            // Setup controller for tap interaction
-            controller = renderer.xr.getController(0);
-            controller.addEventListener('select', onSelect);
-            scene.add(controller);
-            
-            // Handle window resize
-            window.addEventListener('resize', onWindowResize);
-            
-            // Initialize hit test source when session starts
-            renderer.xr.addEventListener('sessionstart', async (event) => {
-                referenceSpace = await renderer.xr.getReferenceSpace();
-                
+
+            // AR session management
+            let hitTestSource = null;
+            let referenceSpace = null;
+
+            document.getElementById('ar-button').addEventListener('click', async () => {
                 try {
-                    hitTestSource = await event.session.requestHitTestSource({ 
-                        space: referenceSpace 
+                    const session = await navigator.xr.requestSession('immersive-ar', {
+                        requiredFeatures: ['local-floor', 'hit-test']
                     });
-                } catch (err) {
-                    console.error('Hit test failed:', err);
+                    
+                    session.addEventListener('end', () => {
+                        if (model) model.visible = false;
+                    });
+                    
+                    renderer.xr.setSession(session);
+                    document.getElementById('ar-button').textContent = 'Exit AR';
+                    
+                    // Set up hit testing
+                    referenceSpace = await session.requestReferenceSpace('local-floor');
+                    hitTestSource = await session.requestHitTestSource({ space: referenceSpace });
+                } catch (error) {
+                    console.error("AR session failed:", error);
                 }
             });
-            
-            // Clean up when session ends
-            renderer.xr.addEventListener('sessionend', () => {
-                hitTestSource = null;
-                referenceSpace = null;
-                modelPlaced = false;
-                if (model) model.visible = false;
-                reticle.visible = false;
-                document.getElementById('instructions').textContent = 
-                    "Point your camera at a flat surface like a table";
-            });
-        }
-        
-        function onSelect() {
-            if (modelPlaced || !model || !reticle.visible) return;
-            
-            // Place the model at the reticle position
-            model.position.setFromMatrixPosition(reticle.matrix);
-            model.visible = true;
-            modelPlaced = true;
-            reticle.visible = false;
-            
-            document.getElementById('instructions').textContent = 
-                "Move your device to view the astronaut from different angles";
-        }
-        
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-        
-        function animate() {
-            renderer.setAnimationLoop(render);
-        }
-        
-        function render(timestamp, frame) {
-            if (frame && !modelPlaced) {
-                // Update reticle position based on hit test
-                if (hitTestSource && frame) {
+
+            // Animation loop
+            renderer.setAnimationLoop((timestamp, frame) => {
+                if (frame && model) {
                     const hitTestResults = frame.getHitTestResults(hitTestSource);
-                    if (hitTestResults.length > 0) {
+                    if (hitTestResults.length > 0 && !model.visible) {
                         const hit = hitTestResults[0];
                         const pose = hit.getPose(referenceSpace);
-                        reticle.visible = true;
-                        reticle.matrix.fromArray(pose.transform.matrix);
-                    } else {
-                        reticle.visible = false;
+                        model.position.setFromMatrixPosition(pose.transform.matrix);
+                        model.visible = true;
                     }
                 }
-            }
-            
-            renderer.render(scene, camera);
+                renderer.render(scene, camera);
+            });
         }
+
+        // Initialize
+        initAR();
     </script>
 </body>
 </html>
