@@ -1,80 +1,63 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <meta name="mobile-web-app-capable" content="yes">
-    <title>Astronaut AR (iOS Guaranteed)</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background: #000;
-            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-            overflow: hidden;
-            height: 100vh;
-        }
-        #ar-button {
-            position: fixed;
-            left: 50%;
-            bottom: 30px;
-            transform: translateX(-50%);
-            padding: 15px 30px;
-            background: #007AFF;
-            color: white;
-            border: none;
-            border-radius: 30px;
-            font-size: 18px;
-            z-index: 100;
-            text-decoration: none;
-            display: none;
-        }
-        #status {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: white;
-            text-align: center;
-            width: 80%;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
+  <title>Astronaut AR Viewer</title>
+
+  <!-- Load model-viewer -->
+  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #000;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      overflow: hidden;
+    }
+
+    model-viewer {
+      width: 100vw;
+      height: 100vh;
+      background-color: #000;
+    }
+
+    .ar-button {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 12px 24px;
+      font-size: 16px;
+      background-color: #007aff;
+      color: #fff;
+      border: none;
+      border-radius: 30px;
+      z-index: 10;
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
-    <div id="status">Loading AR experience...</div>
-    <a id="ar-button" rel="ar" href="https://usdzshare.com/static/astronaut.usdz">
-        👨‍🚀 View Astronaut in AR
-    </a>
 
-    <script>
-        // Force desktop mode on iOS to avoid zooming
-        if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
-            document.querySelector('meta[name="viewport"]').content = "width=980, initial-scale=1.0";
-            
-            // Prevent scrolling
-            document.addEventListener('touchmove', function(e) {
-                e.preventDefault();
-            }, { passive: false });
-        }
+  <!-- 3D Model Viewer with AR support -->
+  <model-viewer
+    id="astronaut"
+    src="https://modelviewer.dev/shared-assets/models/Astronaut.glb"
+    alt="A 3D model of an astronaut"
+    ar
+    ar-modes="webxr scene-viewer quick-look"
+    camera-controls
+    auto-rotate
+    shadow-intensity="1"
+    exposure="1"
+    environment-image="neutral"
+    style="width: 100vw; height: 100vh;"
+    ios-src=""  <!-- Optional: Add your .usdz file here if needed -->
+  >
+    <button slot="ar-button" class="ar-button">👨‍🚀 Launch AR</button>
+  </model-viewer>
 
-        const arButton = document.getElementById('ar-button');
-        const statusDiv = document.getElementById('status');
-
-        // Check if AR Quick Look is supported
-        function checkARSupport() {
-            const a = document.createElement('a');
-            return a.relList && a.relList.supports && a.relList.supports('ar');
-        }
-
-        if (checkARSupport()) {
-            // Set working .usdz link
-            const modelUrl = "https://usdzshare.com/static/astronaut.usdz";
-            arButton.href = modelUrl;
-            arButton.style.display = "inline-block";
-            statusDiv.innerHTML = "✅ AR supported!<br><small>Tap the button below to view the astronaut.</small>";
-        } else {
-            statusDiv.innerHTML = "❌ AR not supported<br><small>Requires iOS 12+ with Safari</small>";
-        }
-    </script>
 </body>
 </html>
