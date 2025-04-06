@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -26,6 +26,8 @@
             border-radius: 30px;
             font-size: 18px;
             z-index: 100;
+            text-decoration: none;
+            display: none;
         }
         #status {
             position: fixed;
@@ -40,50 +42,49 @@
 </head>
 <body>
     <div id="status">Loading AR experience...</div>
-    <a id="ar-button" rel="ar" href="https://developer.apple.com/arkit/gallery/models/teapot/teapot.usdz">
-        View Astronaut in AR
+    <a id="ar-button" rel="ar" href="https://usdzshare.com/static/astronaut.usdz">
+        👨‍🚀 View Astronaut in AR
     </a>
 
     <script>
-        // 1. Force desktop mode on iOS
+        // Force desktop mode on iOS to avoid zooming
         if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
             document.querySelector('meta[name="viewport"]').content = "width=980, initial-scale=1.0";
             
-            // Add iOS-specific touch event prevention
+            // Prevent scrolling
             document.addEventListener('touchmove', function(e) {
                 e.preventDefault();
             }, { passive: false });
         }
 
-        // 2. Monitor AR availability
         const arButton = document.getElementById('ar-button');
         const statusDiv = document.getElementById('status');
-        
-        // 3. Check for AR support
+
+        // Check if AR Quick Look is supported
         function checkARSupport() {
-            // iOS 12+ supports USDZ QuickLook
             const a = document.createElement('a');
-            if (a.relList.supports('ar')) {
+            if (a.relList && a.relList.supports && a.relList.supports('ar')) {
                 return true;
             }
-            statusDiv.innerHTML = "AR not supported<br><small>Requires iOS 12+</small>";
-            arButton.style.display = 'none';
             return false;
         }
 
-        // 4. Initialize AR experience
         if (checkARSupport()) {
-            // Replace with your actual USDZ model URL
-            arButton.href = 'https://developer.apple.com/arkit/gallery/models/teapot/teapot.usdz';
-            arButton.innerHTML = '👨‍🚀 View Astronaut in AR';
-            statusDiv.innerHTML = "Point camera at a flat surface<br><small>Tap the button above</small>";
-            
-            // Auto-trigger AR on iOS if possible
+            // Set working .usdz link
+            const modelUrl = "https://usdzshare.com/static/astronaut.usdz";
+            arButton.href = modelUrl;
+            arButton.style.display = "inline-block";
+            statusDiv.innerHTML = "✅ AR supported!<br><small>Tap the button below to view the astronaut.</small>";
+
+            // Auto-launch on iOS
             if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
                 setTimeout(() => {
                     arButton.click();
-                }, 500);
+                }, 1000);
             }
+        } else {
+            statusDiv.innerHTML = "❌ AR not supported<br><small>Requires iOS 12+ with Safari</small>";
+            arButton.style.display = "none";
         }
     </script>
 </body>
