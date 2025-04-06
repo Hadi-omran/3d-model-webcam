@@ -28,7 +28,7 @@
       left: 0;
       width: 100vw;
       height: 100vh;
-      z-index: -1; /* Place behind the 3D model */
+      z-index: 1; /* Place behind the 3D model */
     }
 
     /* Model Viewer (AR) */
@@ -39,6 +39,7 @@
       width: 100vw;
       height: 100vh;
       background-color: transparent;
+      z-index: 2; /* Put on top of the camera */
     }
 
     /* AR Button */
