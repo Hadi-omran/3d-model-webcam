@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
   <title>Astronaut AR with Surface Detection</title>
 
-  <!-- Load model-viewer -->
+  
   <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 
   <style>
@@ -21,17 +21,17 @@
       align-items: center;
     }
 
-    /* Camera Feed */
+    
     video {
       position: absolute;
       top: 0;
       left: 0;
       width: 100vw;
       height: 100vh;
-      z-index: 1; /* Place behind the 3D model */
+      z-index: 1; 
     }
 
-    /* Model Viewer (AR) */
+    
     model-viewer {
       position: absolute;
       top: 0;
@@ -39,10 +39,10 @@
       width: 100vw;
       height: 100vh;
       background-color: transparent;
-      z-index: 2; /* Put on top of the camera */
+      z-index: 2; 
     }
 
-    /* AR Button */
+   
     .ar-button {
       position: absolute;
       bottom: 20px;
@@ -61,7 +61,7 @@
 </head>
 <body>
 
-  <!-- 3D Model Viewer with AR support -->
+ 
   <model-viewer
     id="astronaut"
     src="https://modelviewer.dev/shared-assets/models/Astronaut.glb"
@@ -75,16 +75,16 @@
     environment-image="neutral"
     scale="0.1"  <!-- Scale the model down to fit the screen -->
     style="width: 100vw; height: 100vh;"
-    ios-src=""  <!-- Optional: Add your .usdz file here if needed -->
+    ios-src=""  
   >
     <button slot="ar-button" class="ar-button">👨‍🚀 Launch AR</button>
   </model-viewer>
 
-  <!-- Camera access video element -->
+  
   <video id="camera" autoplay playsinline></video>
 
   <script>
-    // Enable camera access and display it
+    
     async function enableCamera() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
@@ -94,7 +94,7 @@
       }
     }
 
-    // Start the camera when the page loads
+    
     window.addEventListener('load', enableCamera);
   </script>
 
