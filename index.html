@@ -63,10 +63,7 @@
         // Check if AR Quick Look is supported
         function checkARSupport() {
             const a = document.createElement('a');
-            if (a.relList && a.relList.supports && a.relList.supports('ar')) {
-                return true;
-            }
-            return false;
+            return a.relList && a.relList.supports && a.relList.supports('ar');
         }
 
         if (checkARSupport()) {
@@ -75,16 +72,8 @@
             arButton.href = modelUrl;
             arButton.style.display = "inline-block";
             statusDiv.innerHTML = "✅ AR supported!<br><small>Tap the button below to view the astronaut.</small>";
-
-            // Auto-launch on iOS
-            if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
-                setTimeout(() => {
-                    arButton.click();
-                }, 1000);
-            }
         } else {
             statusDiv.innerHTML = "❌ AR not supported<br><small>Requires iOS 12+ with Safari</small>";
-            arButton.style.display = "none";
         }
     </script>
 </body>
