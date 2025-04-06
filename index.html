@@ -2,164 +2,88 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <meta name="mobile-web-app-capable" content="yes">
     <title>Astronaut AR (iOS Guaranteed)</title>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.min.js"></script>
     <style>
-        body { 
-            margin: 0; 
-            overflow: hidden; 
+        body {
+            margin: 0;
+            padding: 0;
             background: #000;
             font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            overflow: hidden;
+            height: 100vh;
         }
         #ar-button {
-            position: absolute;
-            left: 50%;
-            transform: translateX(-50%);
-            bottom: 30px;
-            padding: 15px 30px;
-            background: #007AFF;
-            color: white;
-            font-size: 18px;
-            font-weight: 500;
-            border: none;
-            border-radius: 30px;
-            z-index: 100;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        }
-        #apple-prompt {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.9);
-            color: white;
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            z-index: 1000;
-            text-align: center;
-        }
-        #apple-prompt button {
-            margin-top: 20px;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
             padding: 15px 30px;
             background: #007AFF;
             color: white;
             border: none;
             border-radius: 30px;
             font-size: 18px;
+            z-index: 100;
+        }
+        #status {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            text-align: center;
+            width: 80%;
         }
     </style>
 </head>
 <body>
-    <button id="ar-button">View Astronaut in AR</button>
-    <div id="apple-prompt">
-        <h2>AR Not Launching?</h2>
-        <p>iPhone requires one extra step:</p>
-        <ol style="text-align: left; max-width: 300px;">
-            <li>Tap the <strong>Share button</strong> (box with arrow)</li>
-            <li>Select <strong>"Request Desktop Site"</strong></li>
-            <li>Refresh the page</li>
-            <li>Tap "View Astronaut in AR" again</li>
-        </ol>
-        <button id="retry-button">I Did This</button>
-    </div>
+    <div id="status">Loading AR experience...</div>
+    <a id="ar-button" rel="ar" href="https://developer.apple.com/arkit/gallery/models/teapot/teapot.usdz">
+        View Astronaut in AR
+    </a>
 
     <script>
-        // 1. First check if this is iOS
-        const isIOS = () => {
-            return /iPad|iPhone|iPod/.test(navigator.userAgent) || 
-                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-        };
-
-        // 2. Apple-specific AR initialization
-        function initAppleAR() {
-            // Create scene
-            const scene = new THREE.Scene();
-            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            document.body.appendChild(renderer.domElement);
-
-            // Add lighting
-            const light = new THREE.AmbientLight(0xffffff, 1);
-            scene.add(light);
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            directionalLight.position.set(0, 10, 0);
-            scene.add(directionalLight);
-
-            // Load model
-            const loader = new THREE.GLTFLoader();
-            loader.load(
-                'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
-                (gltf) => {
-                    const model = gltf.scene;
-                    model.scale.set(0.5, 0.5, 0.5);
-                    model.position.y = -0.5; // Adjust for floor placement
-                    scene.add(model);
-                    
-                    // Start AR session
-                    startQuickLookAR(model);
-                },
-                undefined,
-                (error) => {
-                    console.error("Error loading model:", error);
-                }
-            );
+        // 1. Force desktop mode on iOS
+        if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+            document.querySelector('meta[name="viewport"]').content = "width=980, initial-scale=1.0";
+            
+            // Add iOS-specific touch event prevention
+            document.addEventListener('touchmove', function(e) {
+                e.preventDefault();
+            }, { passive: false });
         }
 
-        // 3. Apple's Quick Look AR (guaranteed to work on iOS)
-        function startQuickLookAR(model) {
-            // Export model to USDZ format (Apple's preferred format)
-            const exporter = new THREE.GLTFExporter();
-            exporter.parse(model, (glb) => {
-                // Create temporary anchor tag
-                const anchor = document.createElement('a');
-                anchor.setAttribute('rel', 'ar');
-                anchor.appendChild(document.createElement('img'));
-                
-                // For demo purposes, we'll use a sample USDZ file
-                // In production, you'd generate this from your 3D model
-                anchor.setAttribute('href', 'https://developer.apple.com/arkit/gallery/models/teapot/teapot.usdz');
-                anchor.setAttribute('title', 'View Astronaut in AR');
-                
-                // Trigger AR
-                setTimeout(() => {
-                    anchor.click();
-                }, 100);
-            });
-        }
-
-        // 4. Main initialization
-        document.getElementById('ar-button').addEventListener('click', () => {
-            if (isIOS()) {
-                // Special handling for iOS
-                if (window.innerWidth === 980 && window.innerHeight === 1308) {
-                    // Already in desktop mode
-                    initAppleAR();
-                } else {
-                    // Show instructions to enable desktop mode
-                    document.getElementById('apple-prompt').style.display = 'flex';
-                }
-            } else {
-                // Standard WebXR for other devices
-                initAppleAR();
+        // 2. Monitor AR availability
+        const arButton = document.getElementById('ar-button');
+        const statusDiv = document.getElementById('status');
+        
+        // 3. Check for AR support
+        function checkARSupport() {
+            // iOS 12+ supports USDZ QuickLook
+            const a = document.createElement('a');
+            if (a.relList.supports('ar')) {
+                return true;
             }
-        });
+            statusDiv.innerHTML = "AR not supported<br><small>Requires iOS 12+</small>";
+            arButton.style.display = 'none';
+            return false;
+        }
 
-        document.getElementById('retry-button').addEventListener('click', () => {
-            document.getElementById('apple-prompt').style.display = 'none';
-            initAppleAR();
-        });
-
-        // 5. Auto-detect if desktop mode was already enabled
-        if (isIOS() && window.innerWidth === 980 && window.innerHeight === 1308) {
-            document.getElementById('ar-button').click();
+        // 4. Initialize AR experience
+        if (checkARSupport()) {
+            // Replace with your actual USDZ model URL
+            arButton.href = 'https://developer.apple.com/arkit/gallery/models/teapot/teapot.usdz';
+            arButton.innerHTML = '👨‍🚀 View Astronaut in AR';
+            statusDiv.innerHTML = "Point camera at a flat surface<br><small>Tap the button above</small>";
+            
+            // Auto-trigger AR on iOS if possible
+            if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+                setTimeout(() => {
+                    arButton.click();
+                }, 500);
+            }
         }
     </script>
 </body>
