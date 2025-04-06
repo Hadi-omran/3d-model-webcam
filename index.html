@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
-  <title>Astronaut AR + Camera Access</title>
+  <title>Astronaut AR on Camera</title>
 
   <!-- Load model-viewer -->
   <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
@@ -15,26 +15,33 @@
       background-color: #000;
       font-family: -apple-system, BlinkMacSystemFont, sans-serif;
       overflow: hidden;
-    }
-
-    model-viewer {
-      width: 100vw;
       height: 100vh;
-      background-color: #000;
-      position: absolute;
-      top: 0;
-      left: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
 
+    /* Camera Feed */
     video {
-      width: 100vw;
-      height: 100vh;
       position: absolute;
       top: 0;
       left: 0;
-      z-index: -1; /* Behind the 3D model */
+      width: 100vw;
+      height: 100vh;
+      z-index: -1; /* Place behind the 3D model */
     }
 
+    /* Model Viewer (AR) */
+    model-viewer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: transparent;
+    }
+
+    /* AR Button */
     .ar-button {
       position: absolute;
       bottom: 20px;
