@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
-  <title>Astronaut AR Viewer</title>
+  <title>Astronaut AR + Camera Access</title>
 
   <!-- Load model-viewer -->
   <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
@@ -21,6 +21,18 @@
       width: 100vw;
       height: 100vh;
       background-color: #000;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    video {
+      width: 100vw;
+      height: 100vh;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: -1; /* Behind the 3D model */
     }
 
     .ar-button {
@@ -58,6 +70,24 @@
   >
     <button slot="ar-button" class="ar-button">👨‍🚀 Launch AR</button>
   </model-viewer>
+
+  <!-- Camera access video element -->
+  <video id="camera" autoplay playsinline></video>
+
+  <script>
+    // Enable camera access and display it
+    async function enableCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        document.getElementById('camera').srcObject = stream;
+      } catch (err) {
+        console.error("Camera access denied or not available", err);
+      }
+    }
+
+    // Start the camera when the page loads
+    window.addEventListener('load', enableCamera);
+  </script>
 
 </body>
 </html>
