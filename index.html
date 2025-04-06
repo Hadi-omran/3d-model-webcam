@@ -8,75 +8,139 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128/examples/js/loaders/GLTFLoader.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; }
+        body { margin: 0; overflow: hidden; font-family: -apple-system, sans-serif; }
         #ar-button {
             position: absolute;
             left: 50%;
             transform: translateX(-50%);
             bottom: 20px;
-            padding: 12px 24px;
-            background: #4285f4;
+            padding: 15px 30px;
+            background: #007AFF;
             color: white;
+            font-size: 18px;
+            font-weight: 500;
             border: none;
-            border-radius: 4px;
+            border-radius: 10px;
             z-index: 100;
         }
-        #unsupported-message {
+        #ios-help {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            text-align: center;
-            padding: 20px;
             background: rgba(0,0,0,0.8);
             color: white;
-            border-radius: 10px;
+            padding: 20px;
+            border-radius: 14px;
             max-width: 80%;
+            text-align: center;
+            display: none;
+        }
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 18px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px 25px;
+            border-radius: 10px;
         }
     </style>
 </head>
 <body>
-    <button id="ar-button">Start AR</button>
-    <div id="unsupported-message" style="display: none;">
-        AR not available on this device. Please try on:
-        <ul style="text-align: left;">
-            <li>iPhone with iOS 13+ (Safari)</li>
-            <li>Android with Chrome 81+</li>
-        </ul>
-        Make sure you're using HTTPS.
+    <div id="loading">Loading AR experience...</div>
+    <button id="ar-button">View in AR</button>
+    <div id="ios-help">
+        <h3>AR Not Working?</h3>
+        <p>Try these steps:</p>
+        <ol style="text-align: left;">
+            <li>Make sure you're using <strong>Safari</strong></li>
+            <li>Tap the <strong>"AA" icon</strong> > <strong>"Request Desktop Website"</strong></li>
+            <li>Ensure <strong>Camera Access</strong> is enabled</li>
+            <li>Try in <strong>good lighting</strong></li>
+        </ol>
+        <button id="retry-button" style="margin-top: 15px; padding: 10px 20px; background: #007AFF; color: white; border: none; border-radius: 10px;">Try Again</button>
     </div>
 
     <script>
-        // Check for WebXR AR support
+        // Enhanced iOS detection and support
+        const isIOS = () => {
+            return /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        };
+
+        // Check for WebXR AR support with iOS-specific handling
         async function checkXRSupport() {
             if (!navigator.xr) {
-                showUnsupportedMessage();
+                if (isIOS()) {
+                    // Special handling for iOS
+                    return await checkIOSSupport();
+                }
                 return false;
             }
 
             try {
-                const supported = await navigator.xr.isSessionSupported('immersive-ar');
-                if (!supported) {
-                    showUnsupportedMessage();
-                }
-                return supported;
+                return await navigator.xr.isSessionSupported('immersive-ar');
             } catch (error) {
                 console.error("XR check failed:", error);
-                showUnsupportedMessage();
                 return false;
             }
         }
 
-        function showUnsupportedMessage() {
-            document.getElementById('unsupported-message').style.display = 'block';
+        // Special iOS support check
+        async function checkIOSSupport() {
+            // iOS 13+ should support WebXR via Safari
+            const iosVersionMatch = navigator.userAgent.match(/OS (\d+)_(\d+)_?(\d+)?/);
+            const iosVersion = iosVersionMatch ? parseInt(iosVersionMatch[1]) : 0;
+            
+            if (iosVersion >= 13) {
+                // Additional check for actual capability
+                return new Promise(resolve => {
+                    const tempCanvas = document.createElement('canvas');
+                    const gl = tempCanvas.getContext('webgl2') || tempCanvas.getContext('webgl');
+                    
+                    if (gl && gl.getExtension('WEBXR_vr')) {
+                        resolve(true);
+                    } else {
+                        resolve(false);
+                    }
+                });
+            }
+            return false;
+        }
+
+        // Show iOS help message
+        function showIOSHelp() {
+            document.getElementById('ios-help').style.display = 'block';
             document.getElementById('ar-button').style.display = 'none';
+            document.getElementById('loading').style.display = 'none';
+            
+            document.getElementById('retry-button').addEventListener('click', () => {
+                document.getElementById('ios-help').style.display = 'none';
+                document.getElementById('loading').style.display = 'block';
+                setTimeout(initAR, 500);
+            });
         }
 
         // Main AR implementation
         async function initAR() {
+            document.getElementById('loading').textContent = "Checking AR support...";
+            
             const supported = await checkXRSupport();
-            if (!supported) return;
+            if (!supported) {
+                if (isIOS()) {
+                    showIOSHelp();
+                } else {
+                    document.getElementById('loading').textContent = "AR not available on this device";
+                    document.getElementById('ar-button').style.display = 'none';
+                }
+                return;
+            }
 
+            document.getElementById('loading').textContent = "Loading 3D model...";
+            
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
             const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -85,8 +149,8 @@
             document.body.appendChild(renderer.domElement);
 
             // Add lighting
-            const light = new THREE.AmbientLight(0xffffff, 1);
-            scene.add(light);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1);
+            scene.add(ambientLight);
             const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
             directionalLight.position.set(0, 10, 0);
             scene.add(directionalLight);
@@ -101,6 +165,12 @@
                     model.scale.set(0.5, 0.5, 0.5);
                     model.visible = false;
                     scene.add(model);
+                    document.getElementById('loading').style.display = 'none';
+                },
+                undefined,
+                (error) => {
+                    console.error("Model load error:", error);
+                    document.getElementById('loading').textContent = "Failed to load 3D model";
                 }
             );
 
@@ -110,42 +180,75 @@
 
             document.getElementById('ar-button').addEventListener('click', async () => {
                 try {
+                    document.getElementById('loading').style.display = 'block';
+                    document.getElementById('loading').textContent = "Starting AR session...";
+                    
                     const session = await navigator.xr.requestSession('immersive-ar', {
                         requiredFeatures: ['local-floor', 'hit-test']
                     });
                     
                     session.addEventListener('end', () => {
                         if (model) model.visible = false;
+                        document.getElementById('ar-button').textContent = 'View in AR';
                     });
                     
                     renderer.xr.setSession(session);
                     document.getElementById('ar-button').textContent = 'Exit AR';
+                    document.getElementById('loading').style.display = 'none';
                     
                     // Set up hit testing
                     referenceSpace = await session.requestReferenceSpace('local-floor');
                     hitTestSource = await session.requestHitTestSource({ space: referenceSpace });
                 } catch (error) {
                     console.error("AR session failed:", error);
+                    document.getElementById('loading').textContent = "AR failed to start";
+                    if (isIOS()) {
+                        showIOSHelp();
+                    }
                 }
             });
 
             // Animation loop
             renderer.setAnimationLoop((timestamp, frame) => {
                 if (frame && model) {
-                    const hitTestResults = frame.getHitTestResults(hitTestSource);
-                    if (hitTestResults.length > 0 && !model.visible) {
-                        const hit = hitTestResults[0];
-                        const pose = hit.getPose(referenceSpace);
-                        model.position.setFromMatrixPosition(pose.transform.matrix);
-                        model.visible = true;
+                    if (hitTestSource) {
+                        const hitTestResults = frame.getHitTestResults(hitTestSource);
+                        if (hitTestResults.length > 0 && !model.visible) {
+                            const hit = hitTestResults[0];
+                            const pose = hit.getPose(referenceSpace);
+                            model.position.setFromMatrixPosition(pose.transform.matrix);
+                            model.visible = true;
+                        }
                     }
                 }
                 renderer.render(scene, camera);
             });
         }
 
-        // Initialize
-        initAR();
+        // Initialize when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            // Special iOS handling
+            if (isIOS()) {
+                // Ensure we're in desktop mode for better WebXR support
+                if (!navigator.xr) {
+                    document.getElementById('loading').textContent = "Optimizing for iOS...";
+                    setTimeout(() => {
+                        initAR();
+                    }, 1000);
+                    return;
+                }
+            }
+            initAR();
+        });
+
+        // Handle orientation changes
+        window.addEventListener('orientationchange', () => {
+            setTimeout(() => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            }, 200);
+        });
     </script>
 </body>
 </html>
